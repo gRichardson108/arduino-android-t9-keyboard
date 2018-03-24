@@ -12,45 +12,47 @@
 */
 #include <stdio.h>
 #include <string.h>
+#include "PinChangeInt.h"
 
 typedef struct ButtonState {
   int pin_number;
-  int previous_state;
-  int current_state;
+  volatile int previous_state;
+  volatile int current_state;
+  void (*isrFunc)();
 } ButtonState;
 
-#define BUTTON_COUNT 10
+#define BUTTON_COUNT 3
 #define BUFFER_SIZE 20
 ButtonState buttons[BUTTON_COUNT];
-const int BUTTON_PINS[] = {2, 3, 4, 5, 6, 7, 8, 9, 10, 11}; // the number of the pushbutton pin
+const int BUTTON_PINS[] = {2, 3, 4}; //, 5, 6, 7, 8, 9, 10, 11}; // the number of the pushbutton pin
 char buffer[BUFFER_SIZE] = "\0";
 
+void button_1(){
+  Serial.write("1,");
+}
+
+void button_2(){
+  Serial.write("2,");
+}
+
+void button_3(){
+  Serial.write("3,");
+}
+
 void setup() {
+  buttons[0].isrFunc = &button_1;
+  buttons[1].isrFunc = &button_2;
+  buttons[2].isrFunc = &button_3;
+  
   // initialize the pushbuttons as an input:
   for (int i = 0; i < BUTTON_COUNT; i++) {
     buttons[i].pin_number = BUTTON_PINS[i];
     buttons[i].previous_state = LOW;
     buttons[i].current_state = LOW;
-    pinMode(buttons[i].pin_number, INPUT);
+    attachPinChangeInterrupt(buttons[i].pin_number, *buttons[i].isrFunc, RISING);
   }
-  Serial.begin(9600);
+  Serial.begin(115200);
 }
 
 void loop() {
-  //clear the current state of the buffer before reading/writing
-  memset(buffer, '\0', BUFFER_SIZE * sizeof(char));
-  // read the state of the pushbutton value:
-  for (int i = 0; i < BUTTON_COUNT; i++) {
-    buttons[i].current_state = digitalRead(buttons[i].pin_number);
-    if (buttons[i].current_state == HIGH && buttons[i].previous_state == LOW) {
-      itoa(buttons[i].pin_number, buffer, 10);
-      Serial.write(buffer);
-    }
-    if (buttons[i].current_state == LOW && buttons[i].previous_state == HIGH) {
-      itoa(buttons[i].pin_number, buffer, 10);
-      Serial.write(buffer);
-    }
-    
-    buttons[i].previous_state = buttons[i].current_state;
-  }
 }
